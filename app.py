@@ -1,27 +1,63 @@
 import streamlit as st
-from scraper import scrape_cyberbackground
+from database import init_db, add_lead, get_all_leads
+from scraper import scrape_cyberbackground  # Your actual scraper function
+from datetime import datetime
 
-st.set_page_config(page_title="Total Leads App", layout="centered")
+# Initialize DB once
+init_db()
+
 st.title("🏠 Total Leads Finder")
 
-st.markdown("Paste in the **structure fire address** from PulsePoint:")
+address = st.text_input("Enter fire address (e.g. 123 Main St)")
 
-address = st.text_input("Fire Address")
+if st.button("Search Owner Info") and address.strip():
+    st.info("Searching... Please wait.")
 
-if st.button("Search Owner Info") and address:
-    st.info("Searching CyberBackgroundChecks...")
-    result = scrape_cyberbackground(address)
+    # Call your scraper (replace with actual scraper call)
+    result = scrape_cyberbackground(address.strip())
 
-    if "error" in result:
-        st.error(result["error"])
+    # Example result structure expected from scraper:
+    # {
+    #   "owner_name": "John Doe",
+    #   "phone": "555-1234",
+    #   "email": "john@example.com",
+    #   "occupancy": "Owner Occupied" or "Renter"
+    # }
+
+    if not result:
+        st.error("No data found for this address.")
     else:
-        st.markdown("### 🔍 Results")
-        st.markdown(f"**Owner:** {result['owner_name']}")
-        st.markdown(f"**Phone:** {result['phone']}")
-        st.markdown(f"**Email:** {result['email']}")
-        st.markdown(f"**Occupancy Status:** {result['occupancy']}")
-
-        if "Owner" in result['occupancy']:
-            st.success("✅ Owner Occupied — Lead saved.")
+        occupancy = result.get("occupancy", "").lower()
+        if "owner" in occupancy:
+            # Save to SQLite only if owner occupied
+            add_lead(
+                address=address.strip(),
+                owner_name=result.get("owner_name", ""),
+                phone=result.get("phone", ""),
+                email=result.get("email", ""),
+                occupancy=result.get("occupancy", "")
+            )
+            st.success(f"Lead saved for owner-occupied property: {result.get('owner_name')}")
         else:
-            st.warning("⚠️ Renter — Lead skipped.")
+            st.warning("Property is not owner occupied. Lead not saved.")
+
+st.markdown("---")
+st.header("📋 Saved Leads")
+
+leads = get_all_leads()
+
+if not leads:
+    st.write("No leads saved yet.")
+else:
+    for lead in leads:
+        _, timestamp, addr, owner, phone, email, occupancy = lead
+        st.markdown(f"""
+        **Address:** {addr}  
+        **Owner:** {owner}  
+        **Phone:** {phone}  
+        **Email:** {email}  
+        **Occupancy:** {occupancy}  
+        *Added:* {timestamp}  
+        ---
+        """)
+
