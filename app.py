@@ -1,35 +1,27 @@
 import streamlit as st
+from scraper import scrape_cyberbackground
 
-# Simulated scrape function (replace with real scraping logic)
-def scrape_cyberbackground(address):
-    if "Las Vegas" in address or "Henderson" in address or "North Las Vegas" in address:
-        return {
-            "owner_name": "Jane Smith",
-            "phone": "702-555-9876",
-            "email": "jane@example.com",
-            "occupancy": "Owner Occupied",
-            "notes": "Ready for outreach"
-        }
+st.set_page_config(page_title="Total Leads App", layout="centered")
+st.title("🏠 Total Leads Finder")
+
+st.markdown("Paste in the **structure fire address** from PulsePoint:")
+
+address = st.text_input("Fire Address")
+
+if st.button("Search Owner Info") and address:
+    st.info("Searching CyberBackgroundChecks...")
+    result = scrape_cyberbackground(address)
+
+    if "error" in result:
+        st.error(result["error"])
     else:
-        return {
-            "owner_name": "",
-            "phone": "",
-            "email": "",
-            "occupancy": "Renter Occupied",
-            "notes": "Skip for outreach"
-        }
-
-st.title("Fire Lead Lookup")
-
-address = st.text_input("Enter Fire Address")
-
-if st.button("Check Occupancy & Owner Info"):
-    if not address:
-        st.error("Please enter an address")
-    else:
-        result = scrape_cyberbackground(address)
-        st.markdown(f"**Occupancy Type:** {result['occupancy']}")
-        st.markdown(f"**Owner Name:** {result['owner_name']}")
+        st.markdown("### 🔍 Results")
+        st.markdown(f"**Owner:** {result['owner_name']}")
         st.markdown(f"**Phone:** {result['phone']}")
         st.markdown(f"**Email:** {result['email']}")
-        st.markdown(f"**Notes:** {result['notes']}")
+        st.markdown(f"**Occupancy Status:** {result['occupancy']}")
+
+        if "Owner" in result['occupancy']:
+            st.success("✅ Owner Occupied — Lead saved.")
+        else:
+            st.warning("⚠️ Renter — Lead skipped.")
